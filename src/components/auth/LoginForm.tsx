@@ -183,15 +183,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import axios from "axios";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email" }),
   password: z
     .string()
     .min(6, { message: "Password must be at least 6 characters" }),
-  role: z.enum(["admin", "user", "editor"], {
-    required_error: "Please select a role",
-  }),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -204,9 +202,9 @@ const DEMO_ACCOUNTS = {
 };
 
 export function LoginForm() {
-  const { login } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<LoginFormValues>({
@@ -214,18 +212,8 @@ export function LoginForm() {
     defaultValues: {
       email: "",
       password: "",
-      role: "user",
     },
   });
-
-  // Watch the role to update email field with demo account
-  const selectedRole = form.watch("role");
-
-  // Set email when role changes
-  const handleRoleChange = (role: string) => {
-    form.setValue("role", role as "admin" | "user" | "editor");
-    form.setValue("email", DEMO_ACCOUNTS[role as keyof typeof DEMO_ACCOUNTS]);
-  };
 
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true);
@@ -234,7 +222,7 @@ export function LoginForm() {
       await login(data.email, data.password);
       toast({
         title: "Login successful",
-        description: `Welcome back! You are logged in as ${data.role}.`,
+        description: `Welcome back! You are logged.`,
       });
       router.push("/documents");
     } catch (error) {
@@ -245,16 +233,13 @@ export function LoginForm() {
             ? error.message
             : "Please check your credentials and try again",
       });
+            setIsLoading(false);
     } finally {
       setIsLoading(false);
     }
   }
 
-  useEffect(() => {
-    form.setValue("role", "admin");
-    form.setValue("email", DEMO_ACCOUNTS["admin"]);
-  }, []);
-console.log("selectedValue",form.watch("email"));
+  console.log("selectedValue", form.watch("email"));
 
   return (
     <div className="w-full max-w-md px-8 py-10 bg-card rounded-xl shadow-lg border">
@@ -265,18 +250,10 @@ console.log("selectedValue",form.watch("email"));
         </p>
       </div>
 
-      {/* Demo mode banner */}
-      <div className="mb-6 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-        <p className="text-sm text-yellow-800 font-medium">Demo Mode</p>
-        <p className="text-xs text-yellow-700">
-          Select a role to test different access levels
-        </p>
-      </div>
-
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {/* Role selection */}
-          <FormField
+          {/* <FormField
             control={form.control}
             name="role"
             render={({ field }) => (
@@ -322,7 +299,7 @@ console.log("selectedValue",form.watch("email"));
                 <FormMessage />
               </FormItem>
             )}
-          />
+          /> */}
 
           <FormField
             control={form.control}
@@ -382,7 +359,7 @@ console.log("selectedValue",form.watch("email"));
                 Logging in...
               </>
             ) : (
-              `Log in as ${selectedRole}`
+              `Log in`
             )}
           </Button>
         </form>

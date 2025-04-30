@@ -35,7 +35,7 @@ interface NavItem {
 }
 
 export function Header() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, logout } = useAuth();
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -76,7 +76,6 @@ export function Header() {
       name: "Users",
       href: "/admin/users",
       icon: <Users className="h-4 w-4 mr-2" />,
-      adminOnly: true,
     },
   ];
 
@@ -111,7 +110,7 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-1">
-            {isAuthenticated &&
+            {user?.id &&
               filteredNavItems.map((item) => (
                 <Link
                   key={item.name}
@@ -135,7 +134,7 @@ export function Header() {
             <ModeToggle />
 
             {/* Auth Buttons or User Menu */}
-            {isAuthenticated ? (
+            {user?.id ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="p-1 relative rounded-full">
@@ -214,7 +213,7 @@ export function Header() {
       {mobileMenuOpen && (
         <div className="md:hidden bg-background border-b">
           <div className="px-2 pt-2 pb-3 space-y-1">
-            {isAuthenticated ? (
+            {user?.id ? (
               <>
                 {filteredNavItems.map((item) => (
                   <Link

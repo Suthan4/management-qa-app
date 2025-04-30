@@ -1,161 +1,145 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { User } from "@/lib/types";
-import {
-  login as authLogin,
-  signup as authSignup,
-  logout as authLogout,
-  getCurrentUser,
-  AuthState,
-} from "@/lib/auth";
+import { createContext, useContext, useState, useEffect } from "react";
+import axios from "axios";
 import { useRouter } from "next/navigation";
 
-interface AuthContextType extends AuthState {
-  login: (email: string, password: string) => Promise<User>;
-  signup: (name: string, email: string, password: string) => Promise<User>;
-  logout: () => Promise<void>;
-}
-
-const initialState: AuthState = {
-  user: null,
-  isAuthenticated: false,
-  isLoading: true,
-  error: null,
+type User = {
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "user" | "editor";
 };
 
-// Create context
-const AuthContext = createContext<AuthContextType>({
-  ...initialState,
-  login: () => Promise.reject("Not implemented"),
-  signup: () => Promise.reject("Not implemented"),
-  logout: () => Promise.reject("Not implemented"),
-});
+type AuthContextType = {
+  user: User | null;
+  login: (email: string, password: string) => Promise<User>;
+  signup: (
+    name: string,
+    email: string,
+    password: string,
+    role: string
+  ) => Promise<void>;
+  logout: () => void;
+  isLoading: boolean;
+  isAdmin: boolean;
+  isEditor: boolean;
+  isUser: boolean;
+};
 
-// Provider component
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
-  const [state, setState] = useState<AuthState>(initialState);
- const route = useRouter();
-  // Initialize: Check if user is already logged in
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const router = useRouter()
+
   useEffect(() => {
-    const initAuth = () => {
-      const user = getCurrentUser();
-
-      setState({
-        user,
-        isAuthenticated: !!user,
-        isLoading: false,
-        error: null,
-      });
-    };
-
-    initAuth();
+    // Check for saved user data in localStorage
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (error) {
+        console.error("Failed to parse stored user", error);
+        localStorage.removeItem("user");
+      }
+    }
+    setIsLoading(false);
   }, []);
 
-  // Login handler
-  const login = async (email: string, password: string) => {
-    setState({
-      ...state,
-      isLoading: true,
-      error: null,
-    });
-
+  const login = async (email: string, password: string): Promise<User> => {
     try {
-      const user = await authLogin(email, password);
+      // In a real app, you would verify credentials on the server
+      // For this demo, we'll fetch users and find a match
+      const response = await axios.get(
+        "https://6789c95bdd587da7ac27a32b.mockapi.io/users"
+      );
+      const users = response.data;
 
-      setState({
-        user,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-      });
+      const matchedUser = users.find(
+        (u: any) => u.email === email && u.password === password
+      );
 
-      return user;
+      if (!matchedUser) {
+        throw new Error("Invalid email or password");
+      }
+
+      // Create user object with necessary data
+      const loggedInUser: User = {
+        id: matchedUser.id,
+        name: matchedUser.name,
+        email: matchedUser.email,
+        role: matchedUser.role || "user", // Default to 'user' if role is not present
+      };
+
+      // Save to state and localStorage
+      setUser(loggedInUser);
+      localStorage.setItem("user", JSON.stringify(loggedInUser));
+
+      return loggedInUser;
     } catch (error) {
-      setState({
-        ...state,
-        isLoading: false,
-        error: error instanceof Error ? error.message : "Login failed",
-      });
-
+      console.error("Login error:", error);
       throw error;
     }
   };
 
-  // Signup handler
-  const signup = async (name: string, email: string, password: string) => {
-    setState({
-      ...state,
-      isLoading: true,
-      error: null,
-    });
-
+  const signup = async (
+    name: string,
+    email: string,
+    password: string,
+    role: string
+  ) => {
+    // This function is implemented in the SignupForm component
+    // But we define it here for completeness
     try {
-      const user = await authSignup(name, email, password);
+      const response = await axios.post(
+        "https://6789c95bdd587da7ac27a32b.mockapi.io/users",
+        {
+          name,
+          email,
+          password,
+          role,
+        }
+      );
 
-      setState({
-        user,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-      });
-
-      return user;
+      return response.data;
     } catch (error) {
-      setState({
-        ...state,
-        isLoading: false,
-        error: error instanceof Error ? error.message : "Signup failed",
-      });
-
+      console.error("Signup error:", error);
       throw error;
     }
   };
 
-  // Logout handler
-  const logout = async () => {
-    setState({
-      ...state,
-      isLoading: true,
-      error: null,
-    });
+  const logout = () => {
+    router.push("/");
+    setUser(null);
+    localStorage.removeItem("user");
 
-    try {
-      await authLogout();
-
-      setState({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        error: null,
-      });
-route.push("/")
-    } catch (error) {
-      setState({
-        ...state,
-        isLoading: false,
-        error: error instanceof Error ? error.message : "Logout failed",
-      });
-
-      throw error;
-    }
   };
 
-  return (
-    <AuthContext.Provider
-      value={{
-        ...state,
-        login,
-        signup,
-        logout,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  // Role-based helper properties
+  const isAdmin = user?.role === "admin";
+  const isEditor = user?.role === "editor" || user?.role === "admin"; // Admins can do what editors can
+  const isUser = !!user; // Anyone logged in is at least a user
+
+  const value = {
+    user,
+    login,
+    signup,
+    logout,
+    isLoading,
+    isAdmin,
+    isEditor,
+    isUser,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
 };
-
-// Custom hook to use auth context
-export const useAuth = () => useContext(AuthContext);

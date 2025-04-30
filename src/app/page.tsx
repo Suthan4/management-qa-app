@@ -11,8 +11,10 @@ import {
   Upload,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/authContext";
 
 export default function Home() {
+  const { user } = useAuth();
   return (
     <div className="flex flex-col min-h-screen">
       <GradientBackground />
@@ -30,15 +32,26 @@ export default function Home() {
                 management system and AI-powered question answering platform.
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
-                <Button size="lg" asChild>
-                  <Link href="/signup">
-                    Get Started
-                    <ChevronRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button size="lg" variant="outline" asChild>
-                  <Link href="/login">Log In</Link>
-                </Button>
+                {!user?.id ? (
+                  <>
+                    <Button size="lg" asChild>
+                      <Link href="/signup">
+                        Get Started
+                        <ChevronRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                    <Button size="lg" variant="outline" asChild>
+                      <Link href="/login">Log In</Link>
+                    </Button>
+                  </>
+                ) : (
+                  <Button size="lg" asChild>
+                    <Link href="/documents">
+                      Go to dashboard
+                      <ChevronRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                )}
               </div>
             </div>
           </div>
